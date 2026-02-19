@@ -1,0 +1,40 @@
+# Auth Starter Routes Configuration
+
+app_login:
+    path: /login
+    controller: Valentin\AuthStarter\Controller\LoginController::login
+
+app_logout:
+    path: /logout
+    methods: GET
+
+app_register:
+    path: /register
+    controller: Valentin\AuthStarter\Controller\RegistrationController::register
+
+# Google OAuth routes
+connect_google_start:
+    path: /connect/google
+    controller: Valentin\AuthStarter\Controller\GoogleController::connect
+
+connect_google_check:
+    path: /connect/google/check
+    controller: Valentin\AuthStarter\Controller\GoogleController::connectCheck
+
+# Password reset routes
+app_forgot_password_request:
+    path: /forgot-password
+    controller: Valentin\AuthStarter\Controller\ResetPasswordController::request
+
+app_check_email:
+    path: /forgot-password/check-email
+    controller: Valentin\AuthStarter\Controller\ResetPasswordController::checkEmail
+
+app_reset_password:
+    path: /reset-password/{token}
+    controller: Valentin\AuthStarter\Controller\ResetPasswordController::reset
+
+# Email verification
+app_verify_email:
+    path: /verify-email
+    controller: Valentin\AuthStarter\Controller\RegistrationController::verifyUserEmail
