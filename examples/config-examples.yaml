@@ -1,0 +1,269 @@
+# Example Configuration Files for Symfony Auth Starter
+# These files show what gets generated/configured during installation
+
+# ============================================================================
+# config/packages/auth_starter.yaml
+# ============================================================================
+auth_starter:
+    # Where to redirect after successful login
+    redirect_after_login: '/'
+    
+    # Enable/disable Google OAuth
+    enable_google: true
+    
+    # Auto-verify users who sign up via OAuth (recommended)
+    auto_verify_oauth_users: true
+    
+    # Email configuration for authentication emails
+    from_email: 'noreply@example.com'
+    from_name: 'Your App'
+
+# ============================================================================
+# config/packages/knpu_oauth2_client.yaml (if Google OAuth enabled)
+# ============================================================================
+knpu_oauth2_client:
+    clients:
+        google:
+            type: google
+            client_id: '%env(GOOGLE_CLIENT_ID)%'
+            client_secret: '%env(GOOGLE_CLIENT_SECRET)%'
+            redirect_route: connect_google_check
+            redirect_params: {}
+            # Available scopes: email, profile, openid
+            # https://developers.google.com/identity/protocols/oauth2/scopes
+
+# ============================================================================
+# config/packages/security.yaml (merged with existing)
+# ============================================================================
+security:
+    # Password hashing algorithm
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+    
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+    
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+        
+        main:
+            lazy: true
+            provider: app_user_provider
+            
+            # Login form authenticator
+            form_login:
+                login_path: app_login
+                check_path: app_login
+                enable_csrf: true
+                default_target_path: /
+            
+            # Google OAuth authenticator
+            custom_authenticators:
+                - Valentin\AuthStarter\Security\LoginFormAuthenticator
+                - Valentin\AuthStarter\Security\GoogleAuthenticator
+            
+            logout:
+                path: app_logout
+                target: /
+            
+            # Optional: Remember me
+            # remember_me:
+            #     secret: '%kernel.secret%'
+            #     lifetime: 604800 # 1 week in seconds
+    
+    access_control:
+        # Public routes
+        - { path: ^/login, roles: PUBLIC_ACCESS }
+        - { path: ^/register, roles: PUBLIC_ACCESS }
+        - { path: ^/forgot-password, roles: PUBLIC_ACCESS }
+        - { path: ^/reset-password, roles: PUBLIC_ACCESS }
+        - { path: ^/verify-email, roles: PUBLIC_ACCESS }
+        - { path: ^/connect/google, roles: PUBLIC_ACCESS }
+        
+        # Protected routes (example)
+        # - { path: ^/admin, roles: ROLE_ADMIN }
+        # - { path: ^/profile, roles: ROLE_USER }
+
+# ============================================================================
+# .env (environment variables to add)
+# ============================================================================
+
+###> Symfony Auth Starter ###
+# Get these from https://console.cloud.google.com/
+GOOGLE_CLIENT_ID=your-google-client-id-here.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret-here
+
+# Optional: Customize email sender
+# AUTH_FROM_EMAIL=noreply@yourapp.com
+# AUTH_FROM_NAME="Your App Name"
+###< Symfony Auth Starter ###
+
+# ============================================================================
+# Mailer Configuration (if using Mailtrap, SendGrid, etc.)
+# ============================================================================
+
+# Example: Mailtrap (development)
+# MAILER_DSN=smtp://username:password@smtp.mailtrap.io:2525
+
+# Example: SendGrid (production)
+# MAILER_DSN=sendgrid://KEY@default
+
+# Example: Gmail (development/testing only)
+# MAILER_DSN=gmail://username:password@default
+
+# Example: Amazon SES
+# MAILER_DSN=ses+smtp://ACCESS_KEY:SECRET_KEY@default
+
+# ============================================================================
+# Database Configuration (Doctrine)
+# ============================================================================
+
+# MySQL
+# DATABASE_URL="mysql://app:password@127.0.0.1:3306/app?serverVersion=8.0"
+
+# PostgreSQL
+# DATABASE_URL="postgresql://app:password@127.0.0.1:5432/app?serverVersion=15&charset=utf8"
+
+# SQLite (development)
+# DATABASE_URL="sqlite:///%kernel.project_dir%/var/data.db"
+
+# ============================================================================
+# config/routes/auth_starter.yaml (auto-generated)
+# ============================================================================
+auth_starter:
+    resource: '@AuthStarterBundle/Resources/config/routes.yaml'
+
+# ============================================================================
+# Example Extended User Entity
+# ============================================================================
+# If you need custom fields, extend the base User:
+
+# src/Entity/User.php
+<?php
+/*
+namespace App\Entity;
+
+use Valentin\AuthStarter\Entity\User as BaseUser;
+use Doctrine\ORM\Mapping as ORM;
+
+#[ORM\Entity]
+#[ORM\Table(name: 'users')]
+class User extends BaseUser
+{
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $firstName = null;
+    
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $lastName = null;
+    
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $phoneNumber = null;
+    
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $bio = null;
+    
+    // Add getters and setters...
+}
+*/
+
+# ============================================================================
+# Example Custom Configuration Usage
+# ============================================================================
+# In your own controllers/services:
+
+<?php
+/*
+namespace App\Controller;
+
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+
+class DashboardController extends AbstractController
+{
+    public function __construct(
+        private readonly ParameterBagInterface $params
+    ) {}
+    
+    public function index(): Response
+    {
+        // Access auth_starter configuration
+        $redirectAfterLogin = $this->params->get('auth_starter.redirect_after_login');
+        $googleEnabled = $this->params->get('auth_starter.enable_google');
+        
+        return $this->render('dashboard/index.html.twig', [
+            'google_enabled' => $googleEnabled,
+        ]);
+    }
+}
+*/
+
+# ============================================================================
+# Customizing Email Templates
+# ============================================================================
+# Copy templates to your project and customize:
+
+# templates/auth/email/verification.html.twig
+# templates/auth/email/reset_password.html.twig
+
+# ============================================================================
+# Production Considerations
+# ============================================================================
+
+# 1. Use strong password hashing (auto by Symfony)
+# 2. Enable HTTPS (required for OAuth)
+# 3. Set secure session cookies:
+
+# config/packages/framework.yaml
+/*
+framework:
+    session:
+        cookie_secure: auto
+        cookie_httponly: true
+        cookie_samesite: lax
+*/
+
+# 4. Configure CORS if using API
+# 5. Set up rate limiting (consider LexikJWTAuthenticationBundle rate limiter)
+# 6. Use environment-specific email providers
+# 7. Monitor failed login attempts
+# 8. Regular security updates: composer update
+
+# ============================================================================
+# Common Customizations
+# ============================================================================
+
+# Override redirect after login per user role:
+<?php
+/*
+namespace App\Security;
+
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Security\Http\Authentication\AuthenticationSuccessHandlerInterface;
+use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+
+class LoginSuccessHandler implements AuthenticationSuccessHandlerInterface
+{
+    public function __construct(
+        private readonly UrlGeneratorInterface $urlGenerator
+    ) {}
+
+    public function onAuthenticationSuccess(Request $request, TokenInterface $token): RedirectResponse
+    {
+        $roles = $token->getRoles();
+        
+        if (in_array('ROLE_ADMIN', array_map(fn($r) => $r->getRole(), $roles))) {
+            return new RedirectResponse($this->urlGenerator->generate('admin_dashboard'));
+        }
+        
+        return new RedirectResponse($this->urlGenerator->generate('user_dashboard'));
+    }
+}
+*/
