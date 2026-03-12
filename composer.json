@@ -1,6 +1,6 @@
 {
-    "name": "valentin/symfony-auth-starter",
-    "description": "A modern authentication starter for Symfony apps — including social login — installable in minutes",
+    "name": "vraith/symfony-auth-starter",
+    "description": "The Laravel Breeze of Symfony — scaffold complete authentication in minutes",
     "type": "symfony-bundle",
     "license": "MIT",
     "keywords": [
@@ -10,42 +10,45 @@
         "google",
         "login",
         "security",
-        "social-auth",
+        "scaffolding",
         "starter-kit"
     ],
     "authors": [
         {
-            "name": "Valentin",
+            "name": "Vraith",
             "email": "contact@example.com"
         }
     ],
     "require": {
         "php": ">=8.1",
-        "symfony/framework-bundle": "^6.4|^7.0",
-        "symfony/security-bundle": "^6.4|^7.0",
-        "symfony/console": "^6.4|^7.0",
-        "symfony/mailer": "^6.4|^7.0",
-        "symfony/twig-bundle": "^6.4|^7.0",
-        "doctrine/orm": "^2.14|^3.0",
         "doctrine/doctrine-bundle": "^2.7",
-        "knpuniversity/oauth2-client-bundle": "^2.15",
-        "league/oauth2-google": "^4.0",
-        "symfonycasts/verify-email-bundle": "^1.15",
-        "symfonycasts/reset-password-bundle": "^1.18"
+        "doctrine/orm": "^2.14|^3.0",
+        "symfony/console": "^6.4|^7.0",
+        "symfony/filesystem": "^6.4|^7.0",
+        "symfony/framework-bundle": "^6.4|^7.0",
+        "symfony/mailer": "^6.4|^7.0",
+        "symfony/security-bundle": "^6.4|^7.0",
+        "symfony/twig-bundle": "^6.4|^7.0",
+        "symfonycasts/reset-password-bundle": "^1.18",
+        "symfonycasts/verify-email-bundle": "^1.15"
     },
     "require-dev": {
+        "phpstan/phpstan": "^1.10",
         "phpunit/phpunit": "^10.0",
-        "symfony/phpunit-bridge": "^6.4|^7.0",
-        "phpstan/phpstan": "^1.10"
+        "symfony/phpunit-bridge": "^6.4|^7.0"
+    },
+    "suggest": {
+        "knpuniversity/oauth2-client-bundle": "Required for Google OAuth login (^2.15)",
+        "league/oauth2-google": "Required for Google OAuth login (^4.0)"
     },
     "autoload": {
         "psr-4": {
-            "Valentin\\AuthStarter\\": "src/"
+            "Vraith\\AuthStarter\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Valentin\\AuthStarter\\Tests\\": "tests/"
+            "Vraith\\AuthStarter\\Tests\\": "tests/"
         }
     },
     "config": {

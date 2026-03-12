@@ -1,19 +1,11 @@
 <?php
-
-declare(strict_types=1);
-
-namespace Valentin\AuthStarter\Entity;
+namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
-/**
- * Base User entity for authentication.
- * 
- * This entity can be extended in the user's application to add custom fields.
- */
 #[ORM\Entity]
 #[ORM\Table(name: 'users')]
 #[ORM\UniqueConstraint(name: 'UNIQ_IDENTIFIER_EMAIL', fields: ['email'])]
@@ -28,21 +20,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 180)]
     private string $email;
 
-    /**
-     * @var list<string> The user roles
-     */
+    /** @var list<string> */
     #[ORM\Column]
     private array $roles = [];
 
-    /**
-     * @var string|null The hashed password (nullable for OAuth-only users)
-     */
     #[ORM\Column(nullable: true)]
     private ?string $password = null;
 
-    /**
-     * @var string|null Google OAuth identifier
-     */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $googleId = null;
 
@@ -74,33 +58,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    /**
-     * A visual identifier that represents this user.
-     *
-     * @see UserInterface
-     */
     public function getUserIdentifier(): string
     {
         return $this->email;
     }
 
-    /**
-     * @see UserInterface
-     *
-     * @return list<string>
-     */
+    /** @return list<string> */
     public function getRoles(): array
     {
         $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
         $roles[] = 'ROLE_USER';
 
         return array_unique($roles);
     }
 
-    /**
-     * @param list<string> $roles
-     */
+    /** @param list<string> $roles */
     public function setRoles(array $roles): static
     {
         $this->roles = $roles;
@@ -108,9 +80,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    /**
-     * @see PasswordAuthenticatedUserInterface
-     */
     public function getPassword(): ?string
     {
         return $this->password;
@@ -123,13 +92,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    /**
-     * @see UserInterface
-     */
     public function eraseCredentials(): void
     {
-        // If you store any temporary, sensitive data on the user, clear it here
-        // $this->plainPassword = null;
     }
 
     public function getGoogleId(): ?string

@@ -1,660 +1,153 @@
-# 🔐 Symfony Auth Starter
+# Symfony Auth Starter
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Symfony](https://img.shields.io/badge/Symfony-6.4%20%7C%207.x-black.svg)](https://symfony.com)
 [![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4.svg)](https://php.net)
 
-> **A modern, opinionated authentication starter for Symfony apps — including social login — installable in minutes.**
+**The Laravel Breeze of Symfony** — scaffold complete authentication into your app in one command.
 
-Stop wasting hours setting up authentication. Get a production-ready auth system with Google OAuth, email verification, and password reset in a single command.
+One `composer require`, one `php bin/console auth:install`, and you have a fully working auth system. After install, you own all the code — no runtime dependency on this package.
 
----
-
-## 🎯 Why This Package?
-
-Building authentication in Symfony is powerful but time-consuming. Every new project requires:
-
-- Setting up Security configuration
-- Creating User entities
-- Implementing OAuth providers
-- Building email verification
-- Adding password reset flows
-- Designing login/register forms
-
-**This package does all of that for you** — with sensible defaults and easy customization.
-
----
-
-## ✨ Features
-
-- ✅ **Classic Email/Password Authentication** — Login and registration out of the box
-- ✅ **Google OAuth2 Login** — One-click social authentication
-- ✅ **Auto-Registration** — First-time Google users are automatically registered
-- ✅ **Email Verification** — Secure account activation flow
-- ✅ **Password Reset** — Complete forgot/reset password system
-- ✅ **Production-Ready Templates** — Clean, minimal Twig templates included
-- ✅ **Auto-Configuration** — Security config generated automatically
-- ✅ **Fully Customizable** — Override everything: entities, templates, controllers
-
----
-
-## 📦 Installation
-
-### Requirements
-
-- PHP 8.1+
-- Symfony 6.4 or 7.x
-- Composer
-
-### Install via Composer
+## Quick Start
 
 ```bash
-composer require valentin/symfony-auth-starter
-```
+composer require vraith/symfony-auth-starter
 
-### Run the Installation Command
-
-```bash
 php bin/console auth:install
-```
 
-That's it! 🎉
-
-The command will:
-
-1. Install required dependencies
-2. Generate your `User` entity
-3. Create authentication controllers
-4. Publish Twig templates
-5. Configure Symfony Security
-6. Set up database migrations
-
----
-
-## ⚙️ Configuration
-
-### 1. Set Up Environment Variables
-
-Add your Google OAuth credentials to `.env`:
-
-```env
-###> Google OAuth ###
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-###< Google OAuth ###
-```
-
-**Get Google OAuth credentials:**
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project (or select existing)
-3. Enable Google+ API
-4. Create OAuth 2.0 credentials
-5. Add authorized redirect URI: `https://yourdomain.com/connect/google/check`
-
-### 2. Configure the Package (Optional)
-
-Edit `config/packages/auth_starter.yaml`:
-
-```yaml
-auth_starter:
-    # Where to redirect after successful login
-    redirect_after_login: '/dashboard'
-    
-    # Enable/disable Google OAuth
-    enable_google: true
-    
-    # Auto-verify users who sign up via OAuth
-    auto_verify_oauth_users: true
-    
-    # Customize email sender
-    from_email: 'noreply@yourapp.com'
-    from_name: 'Your App'
-```
-
-### 3. Run Migrations
-
-```bash
+# Follow the interactive prompts, then:
+php bin/console make:migration
 php bin/console doctrine:migrations:migrate
 ```
 
----
+The installer will ask whether to enable Google OAuth and prompt for your sender email address. It generates all files directly into your project.
 
-## 🚀 Usage
+## What Gets Generated
 
-### Available Routes
-
-After installation, these routes are automatically available:
-
-| Route                     | Purpose                    |
-| ------------------------- | -------------------------- |
-| `/login`                  | Login page                 |
-| `/register`               | Registration page          |
-| `/logout`                 | Logout action              |
-| `/connect/google`         | Initiate Google OAuth      |
-| `/connect/google/check`   | Google OAuth callback      |
-| `/forgot-password`        | Request password reset     |
-| `/reset-password/{token}` | Reset password form        |
-| `/verify-email`           | Email verification handler |
-
-### User Entity
-
-The generated `User` entity includes:
-
-```php
-class User implements UserInterface
-{
-    private ?int $id;
-    private string $email;
-    private array $roles = [];
-    private ?string $password;      // Nullable for OAuth-only users
-    private ?string $googleId;      // Google OAuth identifier
-    private bool $isVerified;
-    private DateTimeImmutable $createdAt;
-}
+```
+src/
+  Entity/User.php                           # Doctrine entity with email, password, googleId, isVerified
+  Controller/Auth/
+    LoginController.php                     # Login + logout
+    RegistrationController.php              # Register + email verification
+    ResetPasswordController.php             # Forgot password + reset
+    GoogleController.php                    # Google OAuth (optional)
+  Form/
+    RegistrationFormType.php                # Email + password fields
+    ResetPasswordRequestFormType.php        # Email field
+    ChangePasswordFormType.php              # Repeated password field
+  Security/
+    LoginFormAuthenticator.php              # Form login with CSRF + remember me
+    GoogleAuthenticator.php                 # OAuth2 authenticator (optional)
+templates/auth/
+    login.html.twig                         # Login page
+    register.html.twig                      # Registration page
+    forgot_password.html.twig               # Request password reset
+    check_email.html.twig                   # "Check your email" confirmation
+    reset_password.html.twig                # New password form
+    email/verification.html.twig            # Verification email
+    email/reset_password.html.twig          # Password reset email
+config/packages/
+    security.yaml                           # Full firewall + access control config
+    knpu_oauth2_client.yaml                 # Google OAuth client (optional)
 ```
 
----
+## Routes
 
-## 🎨 Customization
+| Method     | Path                           | Name                        |
+|------------|--------------------------------|-----------------------------|
+| GET        | `/login`                       | `app_login`                 |
+| GET        | `/logout`                      | `app_logout`                |
+| GET\|POST  | `/register`                    | `app_register`              |
+| GET        | `/verify/email`                | `app_verify_email`          |
+| GET\|POST  | `/reset-password`              | `app_forgot_password_request` |
+| GET        | `/reset-password/check-email`  | `app_check_email`           |
+| GET\|POST  | `/reset-password/reset/{token}`| `app_reset_password`        |
+| GET        | `/connect/google`              | `connect_google_start` *    |
+| GET        | `/connect/google/check`        | `connect_google_check` *    |
 
-### Override Templates
+\* Only when Google OAuth is enabled.
 
-Copy templates to your project and customize:
+## What Each Component Does
 
-```bash
-cp -r vendor/valentin/symfony-auth-starter/templates/auth templates/auth
-```
+**LoginFormAuthenticator** creates a Symfony Security `Passport` with `UserBadge`, `PasswordCredentials`, `CsrfTokenBadge`, and `RememberMeBadge`. It uses `TargetPathTrait` to redirect users back to where they were before login.
 
-Then modify `templates/auth/login.html.twig`, etc.
+**GoogleAuthenticator** extends KnpU's `OAuth2Authenticator`. It fetches the Google user profile, finds or creates a local `User`, and automatically links Google accounts to existing users with matching email addresses. OAuth users are auto-verified.
 
-### Extend the User Entity
+**ResetPasswordController** uses SymfonyCasts' ResetPasswordBundle with an anti-enumeration pattern — it always redirects to the "check your email" page even when no user is found, preventing attackers from probing which emails have accounts.
 
-Add custom fields to your `User` entity:
+**RegistrationController** hashes the password, persists the user, generates a signed email verification URL, and auto-logs in the user via `UserAuthenticatorInterface`.
 
-```php
-// src/Entity/User.php
+## Customization
 
-use Valentin\AuthStarter\Entity\User as BaseUser;
-use Doctrine\ORM\Mapping as ORM;
+All generated code lives in your `src/` and `templates/` directories. Edit it directly — there are no bundle overrides, no config layers, no abstractions to learn.
 
-#[ORM\Entity]
-class User extends BaseUser
-{
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $firstName = null;
-    
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $lastName = null;
-    
-    // Add your custom fields...
-}
-```
+**Want to add a username field?** Add it to `User.php` and `RegistrationFormType.php`.
+**Want to change the email template?** Edit `templates/auth/email/verification.html.twig`.
+**Want to redirect somewhere else after login?** Change the route in `LoginFormAuthenticator::onAuthenticationSuccess()`.
 
-### Override Controllers
+## Google OAuth Setup
 
-Create your own controller extending the base:
+If you enabled Google OAuth during install:
 
-```php
-// src/Controller/CustomLoginController.php
-
-use Valentin\AuthStarter\Controller\LoginController as BaseLoginController;
-
-class CustomLoginController extends BaseLoginController
-{
-    // Override methods as needed
-}
-```
-
----
-
-## 🔧 Advanced Configuration
-
-### Disable Google OAuth
-
-Set `enable_google: false` in `auth_starter.yaml`, or unset the Google credentials in `.env`.
-
-### Custom Redirect After Login
-
-```yaml
-auth_starter:
-    redirect_after_login: '/my-custom-page'
-```
-
-### Customize Email Templates
-
-Override email templates by creating:
-
-- `templates/auth/email/verification.html.twig`
-- `templates/auth/email/reset_password.html.twig`
-
----
-
-## 📚 How It Works
-
-### Classic Authentication Flow
-
-1. User visits `/register`
-2. User submits email + password
-3. Account created, verification email sent
-4. User clicks verification link
-5. Account verified, user can login
-
-### Google OAuth Flow
-
-1. User clicks "Sign in with Google"
-2. Redirected to Google for authorization
-3. Google redirects back to `/connect/google/check`
-4. If user exists → logged in
-5. If new user → account auto-created and logged in
-
----
-
-## 🛠️ Development Roadmap
-
-### ✅ MVP (v1.0)
-
-- [x] Email/Password authentication
-- [x] Google OAuth2
-- [x] Email verification
-- [x] Password reset
-- [x] Auto-configuration command
-
-### 🚧 Future Features (v2.0+)
-
-- [ ] Multi-provider support (GitHub, Facebook, LinkedIn)
-- [ ] Two-Factor Authentication (2FA)
-- [ ] API/JWT support
-- [ ] Account management UI (profile, change email, etc.)
-- [ ] Rate limiting
-- [ ] Remember me functionality
-- [ ] Social account linking
-
-### ❌ Out of Scope
-
-- Multi-tenancy
-- Role-based permissions (use Symfony's built-in voters)
-- SPA/React integration (use with API Platform)
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! This is an opinionated starter, but improvements are always appreciated.
-
-### Development Setup
-
-```bash
-git clone https://github.com/valentin/symfony-auth-starter.git
-cd symfony-auth-starter
-composer install
-```
-
-### Running Tests
-
-```bash
-composer test
-```
-
-### Submitting Issues
-
-Please use GitHub Issues for:
-
-- Bug reports
-- Feature requests
-- Documentation improvements
-
----
-
-## 📝 License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-## 🙏 Credits
-
-Built with ❤️ using:
-
-- [Symfony Security Component](https://symfony.com/doc/current/security.html)
-- [KnpUOAuth2ClientBundle](https://github.com/knpuniversity/oauth2-client-bundle)
-- [SymfonyCasts VerifyEmailBundle](https://github.com/SymfonyCasts/verify-email-bundle)
-- [SymfonyCasts ResetPasswordBundle](https://github.com/SymfonyCasts/reset-password-bundle)
-
----
-
-## 💡 Need Help?
-
-- 📖 [Read the Documentation](https://github.com/valentin/symfony-auth-starter/wiki)
-- 🐛 [Report an Issue](https://github.com/valentin/symfony-auth-starter/issues)
-- 💬 [Join Discussions](https://github.com/valentin/symfony-auth-starter/discussions)
-
----
-
-**⭐ If this package saves you time, please star the repo!*
-
-# 🔐 Symfony Auth Starter
-
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Symfony](https://img.shields.io/badge/Symfony-6.4%20%7C%207.x-black.svg)](https://symfony.com)
-[![PHP](https://img.shields.io/badge/PHP-8.1%2B-777BB4.svg)](https://php.net)
-
-> **A modern, opinionated authentication starter for Symfony apps — including social login — installable in minutes.**
-
-Stop wasting hours setting up authentication. Get a production-ready auth system with Google OAuth, email verification, and password reset in a single command.
-
----
-
-## 🎯 Why This Package?
-
-Building authentication in Symfony is powerful but time-consuming. Every new project requires:
-- Setting up Security configuration
-- Creating User entities
-- Implementing OAuth providers
-- Building email verification
-- Adding password reset flows
-- Designing login/register forms
-
-**This package does all of that for you** — with sensible defaults and easy customization.
-
----
-
-## ✨ Features
-
-- ✅ **Classic Email/Password Authentication** — Login and registration out of the box
-- ✅ **Google OAuth2 Login** — One-click social authentication
-- ✅ **Auto-Registration** — First-time Google users are automatically registered
-- ✅ **Email Verification** — Secure account activation flow
-- ✅ **Password Reset** — Complete forgot/reset password system
-- ✅ **Production-Ready Templates** — Clean, minimal Twig templates included
-- ✅ **Auto-Configuration** — Security config generated automatically
-- ✅ **Fully Customizable** — Override everything: entities, templates, controllers
-
----
-
-## 📦 Installation
-
-### Requirements
-
-- PHP 8.1+
-- Symfony 6.4 or 7.x
-- Composer
-
-### Install via Composer
-
-```bash
-composer require valentin/symfony-auth-starter
-```
-
-### Run the Installation Command
-
-```bash
-php bin/console auth:install
-```
-
-That's it! 🎉
-
-The command will:
-1. Install required dependencies
-2. Generate your `User` entity
-3. Create authentication controllers
-4. Publish Twig templates
-5. Configure Symfony Security
-6. Set up database migrations
-
----
-
-## ⚙️ Configuration
-
-### 1. Set Up Environment Variables
-
-Add your Google OAuth credentials to `.env`:
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project and enable the Google+ API
+3. Create OAuth 2.0 credentials
+4. Add authorized redirect URI: `https://yourdomain.com/connect/google/check`
+5. Set the credentials in `.env.local`:
 
 ```env
-###> Google OAuth ###
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-###< Google OAuth ###
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
 ```
 
-**Get Google OAuth credentials:**
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project (or select existing)
-3. Enable Google+ API
-4. Create OAuth 2.0 credentials
-5. Add authorized redirect URI: `https://yourdomain.com/connect/google/check`
+If you didn't install Google OAuth initially, run `auth:install` again with `--force`.
 
-### 2. Configure the Package (Optional)
-
-Edit `config/packages/auth_starter.yaml`:
-
-```yaml
-auth_starter:
-    # Where to redirect after successful login
-    redirect_after_login: '/dashboard'
-    
-    # Enable/disable Google OAuth
-    enable_google: true
-    
-    # Auto-verify users who sign up via OAuth
-    auto_verify_oauth_users: true
-    
-    # Customize email sender
-    from_email: 'noreply@yourapp.com'
-    from_name: 'Your App'
-```
-
-### 3. Run Migrations
+To add Google OAuth to an existing install, first require the packages:
 
 ```bash
-php bin/console doctrine:migrations:migrate
+composer require knpuniversity/oauth2-client-bundle league/oauth2-google
+php bin/console auth:install --force
 ```
 
----
+## Prerequisites
 
-## 🚀 Usage
+The installer checks for these packages and will tell you if any are missing:
 
-### Available Routes
+- `symfony/security-bundle`
+- `symfony/twig-bundle`
+- `symfony/mailer`
+- `doctrine/doctrine-bundle`
+- `symfonycasts/verify-email-bundle`
+- `symfonycasts/reset-password-bundle`
 
-After installation, these routes are automatically available:
+All are pulled in automatically via `composer require`.
 
-| Route | Purpose |
-|-------|---------|
-| `/login` | Login page |
-| `/register` | Registration page |
-| `/logout` | Logout action |
-| `/connect/google` | Initiate Google OAuth |
-| `/connect/google/check` | Google OAuth callback |
-| `/forgot-password` | Request password reset |
-| `/reset-password/{token}` | Reset password form |
-| `/verify-email` | Email verification handler |
+## Re-running the Installer
 
-### User Entity
-
-The generated `User` entity includes:
-
-```php
-class User implements UserInterface
-{
-    private ?int $id;
-    private string $email;
-    private array $roles = [];
-    private ?string $password;      // Nullable for OAuth-only users
-    private ?string $googleId;      // Google OAuth identifier
-    private bool $isVerified;
-    private DateTimeImmutable $createdAt;
-}
-```
-
----
-
-## 🎨 Customization
-
-### Override Templates
-
-Copy templates to your project and customize:
+Running `auth:install` a second time will skip files that already exist. Use `--force` to overwrite:
 
 ```bash
-cp -r vendor/valentin/symfony-auth-starter/templates/auth templates/auth
+php bin/console auth:install --force
 ```
 
-Then modify `templates/auth/login.html.twig`, etc.
+## Removing the Package
 
-### Extend the User Entity
-
-Add custom fields to your `User` entity:
-
-```php
-// src/Entity/User.php
-
-use Valentin\AuthStarter\Entity\User as BaseUser;
-use Doctrine\ORM\Mapping as ORM;
-
-#[ORM\Entity]
-class User extends BaseUser
-{
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $firstName = null;
-    
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $lastName = null;
-    
-    // Add your custom fields...
-}
-```
-
-### Override Controllers
-
-Create your own controller extending the base:
-
-```php
-// src/Controller/CustomLoginController.php
-
-use Valentin\AuthStarter\Controller\LoginController as BaseLoginController;
-
-class CustomLoginController extends BaseLoginController
-{
-    // Override methods as needed
-}
-```
-
----
-
-## 🔧 Advanced Configuration
-
-### Disable Google OAuth
-
-Set `enable_google: false` in `auth_starter.yaml`, or unset the Google credentials in `.env`.
-
-### Custom Redirect After Login
-
-```yaml
-auth_starter:
-    redirect_after_login: '/my-custom-page'
-```
-
-### Customize Email Templates
-
-Override email templates by creating:
-- `templates/auth/email/verification.html.twig`
-- `templates/auth/email/reset_password.html.twig`
-
----
-
-## 📚 How It Works
-
-### Classic Authentication Flow
-
-1. User visits `/register`
-2. User submits email + password
-3. Account created, verification email sent
-4. User clicks verification link
-5. Account verified, user can login
-
-### Google OAuth Flow
-
-1. User clicks "Sign in with Google"
-2. Redirected to Google for authorization
-3. Google redirects back to `/connect/google/check`
-4. If user exists → logged in
-5. If new user → account auto-created and logged in
-
----
-
-## 🛠️ Development Roadmap
-
-### ✅ MVP (v1.0)
-- [x] Email/Password authentication
-- [x] Google OAuth2
-- [x] Email verification
-- [x] Password reset
-- [x] Auto-configuration command
-
-### 🚧 Future Features (v2.0+)
-- [ ] Multi-provider support (GitHub, Facebook, LinkedIn)
-- [ ] Two-Factor Authentication (2FA)
-- [ ] API/JWT support
-- [ ] Account management UI (profile, change email, etc.)
-- [ ] Rate limiting
-- [ ] Remember me functionality
-- [ ] Social account linking
-
-### ❌ Out of Scope
-- Multi-tenancy
-- Role-based permissions (use Symfony's built-in voters)
-- SPA/React integration (use with API Platform)
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! This is an opinionated starter, but improvements are always appreciated.
-
-### Development Setup
+After installation, all auth code lives in your project. You can safely remove the package:
 
 ```bash
-git clone https://github.com/valentin/symfony-auth-starter.git
-cd symfony-auth-starter
-composer install
+composer remove vraith/symfony-auth-starter
 ```
 
-### Running Tests
+Your auth system will continue to work since it has zero runtime dependency on the bundle.
 
-```bash
-composer test
-```
+## Roadmap
 
-### Submitting Issues
+- Multi-provider OAuth (GitHub, Facebook, LinkedIn)
+- Two-Factor Authentication (2FA)
+- Rate limiting on login/registration
+- Account management (change email, change password)
 
-Please use GitHub Issues for:
-- Bug reports
-- Feature requests
-- Documentation improvements
+## License
 
----
-
-## 📝 License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-## 🙏 Credits
-
-Built with ❤️ using:
-- [Symfony Security Component](https://symfony.com/doc/current/security.html)
-- [KnpUOAuth2ClientBundle](https://github.com/knpuniversity/oauth2-client-bundle)
-- [SymfonyCasts VerifyEmailBundle](https://github.com/SymfonyCasts/verify-email-bundle)
-- [SymfonyCasts ResetPasswordBundle](https://github.com/SymfonyCasts/reset-password-bundle)
-
----
-
-## 💡 Need Help?
-
-- 📖 [Read the Documentation](https://github.com/valentin/symfony-auth-starter/wiki)
-- 🐛 [Report an Issue](https://github.com/valentin/symfony-auth-starter/issues)
-- 💬 [Join Discussions](https://github.com/valentin/symfony-auth-starter/discussions)
-
----
-
-**⭐ If this package saves you time, please star the repo!**
+MIT. See [LICENSE](LICENSE).

@@ -2,17 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Valentin\AuthStarter;
+namespace Vraith\AuthStarter;
 
-use Symfony\Component\HttpKernel\Bundle\Bundle;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
+use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
+use Vraith\AuthStarter\Command\InstallCommand;
 
-/**
- * Main bundle class for Symfony Auth Starter.
- */
-class AuthStarterBundle extends Bundle
+class AuthStarterBundle extends AbstractBundle
 {
-    public function getPath(): string
+    public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        return \dirname(__DIR__);
+        $container->services()
+            ->set(InstallCommand::class)
+            ->autowire()
+            ->autoconfigure()
+            ->arg('$projectDir', '%kernel.project_dir%');
     }
 }

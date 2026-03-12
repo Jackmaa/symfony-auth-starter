@@ -165,6 +165,7 @@
             <button type="submit" class="btn btn-primary">Sign in</button>
         </form>
 
+        {# GOOGLE_OAUTH_START #}
         <div class="divider"><span>or</span></div>
 
         <a href="{{ path('connect_google_start') }}" class="btn btn-google">
@@ -176,10 +177,11 @@
             </svg>
             Continue with Google
         </a>
+        {# GOOGLE_OAUTH_END #}
 
         <div class="links">
             <a href="{{ path('app_forgot_password_request') }}">Forgot password?</a>
-            •
+            &middot;
             <a href="{{ path('app_register') }}">Create account</a>
         </div>
     </div>

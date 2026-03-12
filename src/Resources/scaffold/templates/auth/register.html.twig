@@ -167,6 +167,7 @@
             <button type="submit" class="btn btn-primary">Create account</button>
         {{ form_end(registrationForm) }}
 
+        {# GOOGLE_OAUTH_START #}
         <div class="divider"><span>or</span></div>
 
         <a href="{{ path('connect_google_start') }}" class="btn btn-google">
@@ -178,6 +179,7 @@
             </svg>
             Continue with Google
         </a>
+        {# GOOGLE_OAUTH_END #}
 
         <div class="links">
             Already have an account? <a href="{{ path('app_login') }}">Sign in</a>
