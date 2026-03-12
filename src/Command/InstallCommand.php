@@ -157,13 +157,20 @@ class InstallCommand extends Command
 
     private function displayBanner(SymfonyStyle $io): void
     {
+        $ascii = <<<'ASCII'
+             __     __        _ _   _
+             \ \   / / _ __ _ (_)|_| |___
+              \ \ / / '_/ _`| |  __| '_  \
+               \ V /| | | (__| | | |_| | | |
+                \_/ |_|  \__,_|_|\__|_| |_|
+            ASCII;
+
         $io->newLine();
-        $io->writeln([
-            ' <fg=magenta>╔══════════════════════════════════════════╗</>',
-            ' <fg=magenta>║</> <fg=white;options=bold>  Symfony Auth Starter</> <fg=magenta>║</>',
-            ' <fg=magenta>║</> <fg=gray>  Authentication scaffolding for Symfony</> <fg=magenta>║</>',
-            ' <fg=magenta>╚══════════════════════════════════════════╝</>',
-        ]);
+        foreach (explode("\n", $ascii) as $line) {
+            $io->writeln(sprintf(' <fg=magenta>%s</>', $line));
+        }
+        $io->writeln('');
+        $io->writeln(' <fg=white;options=bold>  Authentication scaffolding for Symfony</>');
         $io->newLine();
     }
 
