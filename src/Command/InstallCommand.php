@@ -287,12 +287,21 @@ class InstallCommand extends Command
 
     private function stripGoogleOAuthSections(string $content): string
     {
-        // Remove content between {# GOOGLE_OAUTH_START #} and {# GOOGLE_OAUTH_END #} markers (inclusive)
-        return preg_replace(
+        // Remove Twig comment markers: {# GOOGLE_OAUTH_START #} ... {# GOOGLE_OAUTH_END #}
+        $content = preg_replace(
             '/\s*\{# GOOGLE_OAUTH_START #\}.*?\{# GOOGLE_OAUTH_END #\}/s',
             '',
             $content
         );
+
+        // Remove CSS comment markers: /* GOOGLE_OAUTH_CSS_START */ ... /* GOOGLE_OAUTH_CSS_END */
+        $content = preg_replace(
+            '/\s*\/\* GOOGLE_OAUTH_CSS_START \*\/.*?\/\* GOOGLE_OAUTH_CSS_END \*\//s',
+            '',
+            $content
+        );
+
+        return $content;
     }
 
     private function generateSecurityConfig(bool $googleOAuth, SymfonyStyle $io, bool $force, array &$createdFiles): void

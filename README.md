@@ -112,16 +112,18 @@ php bin/console auth:install --force
 
 ## Prerequisites
 
-The installer checks for these packages and will tell you if any are missing:
+All dependencies are pulled in automatically via `composer require`, including:
 
 - `symfony/security-bundle`
 - `symfony/twig-bundle`
+- `symfony/form`
+- `symfony/validator`
 - `symfony/mailer`
-- `doctrine/doctrine-bundle`
+- `doctrine/doctrine-bundle` + `doctrine/orm`
 - `symfonycasts/verify-email-bundle`
 - `symfonycasts/reset-password-bundle`
 
-All are pulled in automatically via `composer require`.
+The installer also checks at runtime that the required bundles are registered.
 
 ## Re-running the Installer
 
