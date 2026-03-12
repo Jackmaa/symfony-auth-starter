@@ -1,0 +1,21 @@
+/vendor/
+composer.lock
+
+# Tests
+/.phpunit.cache
+/phpunit.xml
+
+# IDE
+/.idea/
+/.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+/build/
+/coverage/
