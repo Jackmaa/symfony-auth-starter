@@ -74,6 +74,7 @@ class InstallCommand extends Command
         $this->copyScaffoldFile('Form/ChangePasswordFormType.php', 'src/Form/ChangePasswordFormType.php', $io, $force, $createdFiles);
 
         // ── Controllers ────────────────────────────────────────────
+        $this->copyScaffoldFile('Controller/HomeController.php', 'src/Controller/HomeController.php', $io, $force, $createdFiles);
         $this->copyScaffoldFile('Controller/Auth/LoginController.php', 'src/Controller/Auth/LoginController.php', $io, $force, $createdFiles);
         $this->copyScaffoldFile('Controller/Auth/RegistrationController.php', 'src/Controller/Auth/RegistrationController.php', $io, $force, $createdFiles);
         $this->copyScaffoldFile('Controller/Auth/ResetPasswordController.php', 'src/Controller/Auth/ResetPasswordController.php', $io, $force, $createdFiles);
@@ -90,6 +91,7 @@ class InstallCommand extends Command
         }
 
         // ── Templates ──────────────────────────────────────────────
+        $this->copyScaffoldFile('templates/home.html.twig', 'templates/home.html.twig', $io, $force, $createdFiles);
         $this->copyTemplateFile('templates/auth/login.html.twig', 'templates/auth/login.html.twig', $io, $force, $enableGoogle, $createdFiles);
         $this->copyTemplateFile('templates/auth/register.html.twig', 'templates/auth/register.html.twig', $io, $force, $enableGoogle, $createdFiles);
         $this->copyScaffoldFile('templates/auth/forgot_password.html.twig', 'templates/auth/forgot_password.html.twig', $io, $force, $createdFiles);
@@ -138,13 +140,13 @@ class InstallCommand extends Command
             $enableGoogle
                 ? 'Set <comment>GOOGLE_CLIENT_ID</comment> and <comment>GOOGLE_CLIENT_SECRET</comment> in <comment>.env.local</comment>'
                 : 'Google OAuth is disabled. Run <comment>auth:install</comment> again to enable it.',
-            'Add an <comment>app_home</comment> route (controllers redirect there after login)',
             sprintf('Set <comment>app.from_email</comment> parameter if you want a different sender than <comment>%s</comment>', $fromEmail),
         ];
         $io->listing($nextSteps);
 
         $io->section('Available routes');
         $routes = [
+            ['<comment>GET</comment>', '/', 'app_home'],
             ['<comment>GET</comment>', '/login', 'app_login'],
             ['<comment>GET</comment>', '/logout', 'app_logout'],
             ['<comment>GET|POST</comment>', '/register', 'app_register'],
@@ -281,7 +283,41 @@ class InstallCommand extends Command
 
         $io->writeln(' <fg=green>✓</> Google OAuth packages installed');
 
+        // Flex may not register the bundle when run via Process — ensure it manually
+        $this->ensureBundleRegistered(
+            'KnpU\OAuth2ClientBundle\KnpUOAuth2ClientBundle',
+            $io,
+        );
+
         return true;
+    }
+
+    private function ensureBundleRegistered(string $bundleClass, SymfonyStyle $io): void
+    {
+        $bundlesPath = $this->projectDir . '/config/bundles.php';
+
+        if (!$this->filesystem->exists($bundlesPath)) {
+            return;
+        }
+
+        $content = file_get_contents($bundlesPath);
+        $shortClass = substr($bundleClass, strrpos($bundleClass, '\\') + 1);
+
+        if (str_contains($content, $shortClass)) {
+            return;
+        }
+
+        // Insert before the closing ];
+        $line = sprintf("    %s::class => ['all' => true],\n", $bundleClass);
+        $content = str_replace("];\n", $line . "];\n", $content);
+
+        // Fallback if file doesn't end with ];\n
+        if (!str_contains($content, $line)) {
+            $content = str_replace('];', $line . '];', $content);
+        }
+
+        $this->filesystem->dumpFile($bundlesPath, $content);
+        $io->writeln(sprintf(' <fg=green>✓</> Registered <comment>%s</comment> in <comment>bundles.php</comment>', $shortClass));
     }
 
     private function copyScaffoldFile(string $source, string $dest, SymfonyStyle $io, bool $force, array &$createdFiles): bool
@@ -415,11 +451,22 @@ security:
 YAML;
 
         if ($this->filesystem->exists($destPath) && !$force) {
-            $io->writeln(' <fg=yellow>→</> Skipped <comment>config/packages/security.yaml</comment> (already exists)');
-            $io->note('Add the following to your existing security.yaml:');
-            $io->writeln($config);
+            $existing = file_get_contents($destPath);
 
-            return;
+            if (str_contains($existing, 'LoginFormAuthenticator')) {
+                $io->writeln(' <fg=yellow>→</> Skipped <comment>config/packages/security.yaml</comment> (already configured)');
+
+                return;
+            }
+
+            $io->warning('security.yaml exists but is not configured for auth-starter.');
+
+            if (!$io->confirm('Overwrite it?', true)) {
+                $io->note('Add the following to your existing security.yaml:');
+                $io->writeln($config);
+
+                return;
+            }
         }
 
         $this->filesystem->mkdir(\dirname($destPath));
