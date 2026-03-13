@@ -11,6 +11,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
 
 #[AsCommand(
     name: 'auth:install',
@@ -54,6 +56,9 @@ class InstallCommand extends Command
         }
 
         $fromEmail = $io->ask('From email address for outgoing emails', 'noreply@example.com');
+
+        // ── Database ───────────────────────────────────────────────
+        $dbConfig = $this->askDatabaseConfig($io);
 
         $io->newLine();
         $io->section('Installing authentication scaffolding');
@@ -104,6 +109,9 @@ class InstallCommand extends Command
         // ── Config: framework.yaml parameters ──────────────────────
         $this->ensureAppParameters($fromEmail, $io);
 
+        // ── .env: Database ─────────────────────────────────────────
+        $this->configureDatabaseEnv($dbConfig, $io);
+
         // ── .env: Google OAuth vars ────────────────────────────────
         if ($enableGoogle) {
             $this->appendGoogleEnvVars($io);
@@ -111,6 +119,9 @@ class InstallCommand extends Command
 
         // ── Route loading check ────────────────────────────────────
         $this->checkRouteLoading($io);
+
+        // ── Database setup ─────────────────────────────────────────
+        $this->runDatabaseSetup($dbConfig, $io);
 
         // ── Summary ────────────────────────────────────────────────
         $io->newLine();
@@ -122,15 +133,15 @@ class InstallCommand extends Command
         }
 
         $io->section('Next steps');
-        $io->listing([
-            'Run <comment>php bin/console make:migration</comment> and <comment>php bin/console doctrine:migrations:migrate</comment>',
+        $nextSteps = [
             'Configure <comment>MAILER_DSN</comment> in <comment>.env</comment> for email verification & password reset',
             $enableGoogle
                 ? 'Set <comment>GOOGLE_CLIENT_ID</comment> and <comment>GOOGLE_CLIENT_SECRET</comment> in <comment>.env.local</comment>'
                 : 'Google OAuth is disabled. Run <comment>auth:install</comment> again to enable it.',
             'Add an <comment>app_home</comment> route (controllers redirect there after login)',
             sprintf('Set <comment>app.from_email</comment> parameter if you want a different sender than <comment>%s</comment>', $fromEmail),
-        ]);
+        ];
+        $io->listing($nextSteps);
 
         $io->section('Available routes');
         $routes = [
@@ -223,15 +234,52 @@ class InstallCommand extends Command
             $missing[] = 'league/oauth2-google';
         }
 
-        if (\count($missing) > 0) {
-            $io->warning('Google OAuth requires additional packages:');
-            $io->listing($missing);
-            $io->writeln(sprintf('  <comment>composer require %s</comment>', implode(' ', $missing)));
-            $io->writeln('  Skipping Google OAuth for now.');
+        if (\count($missing) === 0) {
+            return true;
+        }
+
+        $io->writeln(sprintf(' <fg=yellow>!</> Missing packages: <comment>%s</comment>', implode(', ', $missing)));
+
+        if (!$io->confirm('Install them now via Composer?', true)) {
+            $io->writeln('  Skipping Google OAuth.');
             $io->newLine();
 
             return false;
         }
+
+        return $this->runComposerRequire($missing, $io);
+    }
+
+    private function runComposerRequire(array $packages, SymfonyStyle $io): bool
+    {
+        $composer = (new ExecutableFinder())->find('composer');
+
+        if (null === $composer) {
+            $io->error('Could not find the Composer executable.');
+
+            return false;
+        }
+
+        $command = array_merge([$composer, 'require', '--no-interaction'], $packages);
+        $process = new Process($command, $this->projectDir);
+        $process->setTimeout(120);
+
+        $io->writeln(sprintf(' <fg=blue>$</> %s', implode(' ', $command)));
+        $io->newLine();
+
+        $process->run(function (string $type, string $buffer) use ($io): void {
+            $io->write($buffer);
+        });
+
+        $io->newLine();
+
+        if (!$process->isSuccessful()) {
+            $io->error('Composer install failed. Skipping Google OAuth.');
+
+            return false;
+        }
+
+        $io->writeln(' <fg=green>✓</> Google OAuth packages installed');
 
         return true;
     }
@@ -488,5 +536,124 @@ YAML;
             . "        namespace: App\\Controller\n"
             . "    type: attribute\n"
         );
+    }
+
+    /** @return array{driver: string, url: string} */
+    private function askDatabaseConfig(SymfonyStyle $io): array
+    {
+        $driver = $io->choice('Which database engine?', [
+            'sqlite' => 'SQLite (file-based, no setup needed)',
+            'mysql' => 'MySQL / MariaDB',
+            'postgresql' => 'PostgreSQL',
+        ], 'sqlite');
+
+        if ($driver === 'sqlite') {
+            return [
+                'driver' => 'sqlite',
+                'url' => 'sqlite:///%kernel.project_dir%/var/data.db',
+            ];
+        }
+
+        $host = $io->ask('Database host', '127.0.0.1');
+        $port = $io->ask('Database port', $driver === 'mysql' ? '3306' : '5432');
+        $name = $io->ask('Database name', 'app');
+        $user = $io->ask('Database user', 'root');
+        $password = $io->askHidden('Database password (leave empty for none)') ?? '';
+
+        $version = $driver === 'mysql'
+            ? $io->ask('Server version', '8.0')
+            : $io->ask('Server version', '16');
+
+        $credentials = $password !== '' ? sprintf('%s:%s', $user, $password) : $user;
+
+        $url = sprintf(
+            '%s://%s@%s:%s/%s?serverVersion=%s&charset=utf8',
+            $driver === 'mysql' ? 'mysql' : 'postgresql',
+            $credentials,
+            $host,
+            $port,
+            $name,
+            $version,
+        );
+
+        if ($driver === 'mysql') {
+            $url .= 'mb4';
+        }
+
+        return [
+            'driver' => $driver,
+            'url' => $url,
+        ];
+    }
+
+    /** @param array{driver: string, url: string} $dbConfig */
+    private function configureDatabaseEnv(array $dbConfig, SymfonyStyle $io): void
+    {
+        $envPath = $this->projectDir . '/.env';
+
+        if (!$this->filesystem->exists($envPath)) {
+            $io->note(sprintf('Add DATABASE_URL="%s" to your .env file', $dbConfig['url']));
+
+            return;
+        }
+
+        $content = file_get_contents($envPath);
+
+        // Replace existing DATABASE_URL (uncommented line)
+        $updated = preg_replace(
+            '/^DATABASE_URL=.*$/m',
+            sprintf('DATABASE_URL="%s"', $dbConfig['url']),
+            $content,
+            1,
+            $count,
+        );
+
+        if ($count > 0) {
+            $this->filesystem->dumpFile($envPath, $updated);
+            $io->writeln(sprintf(' <fg=green>✓</> Updated <comment>DATABASE_URL</comment> in <comment>.env</comment> (%s)', $dbConfig['driver']));
+        } else {
+            $this->filesystem->appendToFile($envPath, sprintf("\nDATABASE_URL=\"%s\"\n", $dbConfig['url']));
+            $io->writeln(sprintf(' <fg=green>✓</> Added <comment>DATABASE_URL</comment> to <comment>.env</comment> (%s)', $dbConfig['driver']));
+        }
+    }
+
+    /** @param array{driver: string, url: string} $dbConfig */
+    private function runDatabaseSetup(array $dbConfig, SymfonyStyle $io): void
+    {
+        if (!$io->confirm('Create database and schema now?', true)) {
+            $io->writeln('  Skipping. Run manually:');
+            $io->writeln('    <comment>php bin/console doctrine:database:create</comment>');
+            $io->writeln('    <comment>php bin/console doctrine:schema:create</comment>');
+
+            return;
+        }
+
+        $consolePath = $this->projectDir . '/bin/console';
+        $php = (new ExecutableFinder())->find('php') ?? 'php';
+
+        // SQLite auto-creates the file, other engines need database:create
+        if ($dbConfig['driver'] !== 'sqlite') {
+            $io->writeln(' <fg=blue>$</> php bin/console doctrine:database:create');
+            $process = new Process([$php, $consolePath, 'doctrine:database:create', '--if-not-exists', '--no-interaction'], $this->projectDir);
+            $process->run(function (string $type, string $buffer) use ($io): void {
+                $io->write($buffer);
+            });
+
+            if (!$process->isSuccessful()) {
+                $io->warning('Could not create database. You may need to create it manually.');
+            }
+        }
+
+        $io->writeln(' <fg=blue>$</> php bin/console doctrine:schema:create');
+        $process = new Process([$php, $consolePath, 'doctrine:schema:create', '--no-interaction'], $this->projectDir);
+        $process->run(function (string $type, string $buffer) use ($io): void {
+            $io->write($buffer);
+        });
+
+        if ($process->isSuccessful()) {
+            $io->writeln(' <fg=green>✓</> Database schema created');
+        } else {
+            $io->warning('Schema creation failed. If the schema already exists, run doctrine:schema:update --force instead.');
+        }
     }
 }
